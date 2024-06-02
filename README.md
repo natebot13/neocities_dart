@@ -1,4 +1,4 @@
-A simple REST wrapper for the Neocities API.
+A simple REST wrapper for the [Neocities](https://neocities.org) API.
 
 Example:
 
