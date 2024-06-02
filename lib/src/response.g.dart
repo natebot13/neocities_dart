@@ -34,8 +34,25 @@ const _$ResultEnumMap = {
 };
 
 const _$ErrorTypeEnumMap = {
-  ErrorType.siteNotFound: 'site_not_found',
   ErrorType.invalidAuth: 'invalid_auth',
-  ErrorType.missingFilenames: 'missing_filenames',
+  ErrorType.siteNotFound: 'site_not_found',
+  ErrorType.siteNotAllowed: 'site_not_allowed',
   ErrorType.missingFiles: 'missing_files',
+  ErrorType.tooLarge: 'too_large',
+  ErrorType.tooManyFiles: 'too_many_files',
+  ErrorType.invalidFileType: 'invalid_file_type',
+  ErrorType.directoryExists: 'directory_exists',
+  ErrorType.fileTooLarge: 'file_too_large',
+  ErrorType.filePathTooLong: 'file_path_too_long',
+  ErrorType.fileNameTooLong: 'file_name_too_long',
+  ErrorType.missingArguments: 'missing_arguments',
+  ErrorType.badPath: 'bad_path',
+  ErrorType.badNewPath: 'bad_new_path',
+  ErrorType.missingFile: 'missing_file',
+  ErrorType.renameError: 'rename_error',
+  ErrorType.missingFilenames: 'missing_filenames',
+  ErrorType.badFilename: 'bad_filename',
+  ErrorType.cannotDeleteSiteDirectory: 'cannot_delete_site_directory',
+  ErrorType.cannotDeleteIndex: 'cannot_delete_index',
+  ErrorType.notFound: 'not_found',
 };

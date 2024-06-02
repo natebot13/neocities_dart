@@ -1,4 +1,4 @@
-import 'package:neocities/src/serialization.dart';
+import 'serialization.dart';
 
 part 'info.g.dart';
 

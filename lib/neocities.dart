@@ -1,9 +1,14 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:neocities/file.dart';
-import 'package:neocities/info.dart';
-import 'package:neocities/response.dart';
+import 'package:neocities/src/file.dart';
+import 'package:neocities/src/info.dart';
+import 'package:neocities/src/response.dart';
+import 'package:quiver/collection.dart';
+
+export 'package:neocities/src/file.dart';
+export 'package:neocities/src/info.dart';
+export 'package:neocities/src/response.dart';
 
 class FailedRequest implements Exception {
   final Response _response;
@@ -15,11 +20,12 @@ class FailedRequest implements Exception {
 class UploadFile {
   String filename;
   int size;
-  Stream<List<int>> bytes;
-  UploadFile(this.filename, this.size, this.bytes);
+  Stream<List<int>> byteStream;
+  UploadFile(this.filename, this.size, this.byteStream);
 }
 
 class Neocities {
+  http.Client _client;
   String? username;
   String? password;
   String? apiKey;
@@ -30,9 +36,9 @@ class Neocities {
     this.password,
     this.apiKey,
     this.options = const {},
-  });
+  }) : _client = http.Client();
 
-  String get url => 'neocities.org';
+  String get url => options['url'] ?? 'neocities.org';
 
   Uri _makeUri(String method, [Map<String, dynamic>? params]) {
     var authority = url;
@@ -45,16 +51,24 @@ class Neocities {
   Future<Response> _makeRequest(
     String method, {
     Map<String, dynamic>? params,
-    Object? body,
+    Multimap<String, String>? formData,
   }) async {
     final uri = _makeUri(method, params);
-    final headers = apiKey == null ? null : {'authorization': 'Bearer $apiKey'};
+    final request = http.Request(formData == null ? 'get' : 'post', uri);
+    request.headers.addAll({
+      if (apiKey != null) 'authorization': 'Bearer $apiKey',
+      if (formData != null) 'Content-Type': 'application/x-www-form-urlencoded'
+    });
+    if (formData != null) {
+      final dumb = <String>[];
+      formData.forEach((k, v) => dumb.add('$k=$v'));
+      request.body = dumb.join('&');
+    }
 
-    final httpResponse = body == null
-        ? await http.get(uri, headers: headers)
-        : await http.post(uri, headers: headers, body: body);
+    final streamedResponse = await _client.send(request);
+    final body = await streamedResponse.stream.transform(utf8.decoder).join();
 
-    final response = Response.fromJson(jsonDecode(httpResponse.body));
+    final response = Response.fromJson(jsonDecode(body));
     if (response.result != Result.success) {
       throw FailedRequest(response);
     }
@@ -84,27 +98,51 @@ class Neocities {
     return response.apiKey!;
   }
 
-  Future<void> delete(List<String> filenames) {
-    return _makeRequest('delete', body: {'filenames[]': filenames});
+  Future<String> delete(List<String> filenames) async {
+    final map = Multimap<String, String>();
+    for (var f in filenames) {
+      map.add('filenames[]', f);
+    }
+    final response = await _makeRequest('delete', formData: map);
+    return response.message ?? 'Successfully deleted $filenames';
   }
 
-  Future<void> upload(List<UploadFile> files) async {
+  Future<String> upload(List<UploadFile> files) async {
     final request = http.MultipartRequest('post', _makeUri('upload'));
     if (apiKey != null) {
-      request.headers['authorization'] = 'Bearer $apiKey';
+      request.headers.addAll({
+        if (apiKey != null) 'authorization': 'Bearer $apiKey',
+      });
     }
     for (final file in files) {
       request.files.add(
         http.MultipartFile(
           file.filename,
-          file.bytes,
+          file.byteStream,
           file.size,
           filename: file.filename,
         ),
       );
     }
 
-    final streamedResponse = await request.send();
-    await streamedResponse.stream.drain();
+    final streamedResponse = await _client.send(request);
+    final body = await streamedResponse.stream.transform(utf8.decoder).join();
+    final response = Response.fromJson(jsonDecode(body));
+    if (response.result != Result.success) {
+      throw FailedRequest(response);
+    }
+    return response.message ?? 'success';
+  }
+
+  Future<String> rename(String path, String newPath) async {
+    final map = Multimap<String, String>();
+    map.add('path', path);
+    map.add('new_path', newPath);
+    final response = await _makeRequest('rename', formData: map);
+    return response.message ?? 'Successfully renamed $path to $newPath';
+  }
+
+  void close() {
+    _client.close();
   }
 }
